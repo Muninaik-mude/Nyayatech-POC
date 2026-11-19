@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+runs/
+*.jsonl
+.DS_Store
+**/.DS_Store
