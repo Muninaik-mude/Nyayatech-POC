@@ -48,19 +48,6 @@ npm run bench
 
 Reads `runs/runs.jsonl` and prints a summary table: success rate, avg latency, avg memory, captcha accuracy per portal/tier combo.
 
-## Environment variables
-
-| Variable | Default | Purpose |
-|---|---|---|
-| `CAPTCHA_PROVIDER` | `claude` | `claude` or `gemini` |
-| `ANTHROPIC_API_KEY` | — | Claude captcha solver |
-| `CLAUDE_CAPTCHA_MODEL` | `claude-haiku-5-5` | Model for captcha |
-| `GEMINI_API_KEY` | — | Gemini captcha (optional) |
-| `DEFAULT_TIER` | `auto` | `auto`, `http`, `lightpanda`, `chromium` |
-| `LIGHTPANDA_URL` | `ws://127.0.0.1:9222` | CDP endpoint |
-| `PORT` | `3000` | Local server port |
-| `RUNS_DIR` | `./runs` | Where raw HTML and metrics are written |
-
 ## Project layout
 
 ```
