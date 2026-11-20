@@ -1,0 +1,99 @@
+{
+  "source": "CNR - Highcourt (1).pdf",
+  "courts": [
+    {
+      "name": "Karnataka High Court",
+      "website": null,
+      "cnrs": [
+        "KAHC010112112026",
+        "KAHC010343522026",
+        "KAHC010740202026",
+        "KAHC010747952026",
+        "KAHC010763452025"
+      ],
+      "bench": "KRHC"
+    },
+    {
+      "name": "Andhra Pradesh High Court",
+      "website": "https://aphc.gov.in/",
+      "cnrs": [
+        "APHC01-059651-2026",
+        "APHC01-057252-2026",
+        "APHC01-030750-2026",
+        "APHC01-055165-2026",
+        "APHC01-053833-2026"
+      ],
+      "bench": "APHC"
+    },
+    {
+      "name": "Telangana High Court",
+      "website": "https://tshc.gov.in/",
+      "cnrs": [
+        "HBHC010155842018",
+        "HBHC01-060762-2026",
+        "HBHC010003112018",
+        "HBHC011032202017",
+        "HBHC01-050074-2026"
+      ],
+      "bench": "TSHC"
+    },
+    {
+      "name": "Kerala High Court",
+      "website": "https://highcourt.kerala.gov.in/",
+      "cnrs": [
+        "KLHC010686562026",
+        "KLHC010682492026",
+        "KLHC010671222026",
+        "KLHC010653582026",
+        "KLHC010652732026"
+      ],
+      "bench": "KLHC"
+    },
+    {
+      "name": "Delhi High Court",
+      "website": "https://delhihighcourt.nic.in/",
+      "cnrs": [
+        "DLHC010289202026",
+        "DLHC010003732026",
+        "DLHC011079002025"
+      ],
+      "bench": "DLHC"
+    },
+    {
+      "name": "Madras High Court (Tamil Nadu)",
+      "website": null,
+      "cnrs": [
+        "HCMA010003482026",
+        "HCMA010003402026",
+        "HCMA010013212026",
+        "HCMA010009692026",
+        "HCMA010018172026"
+      ],
+      "bench": "TNHC"
+    },
+    {
+      "name": "Bombay High Court (Maharashtra)",
+      "website": null,
+      "cnrs": [
+        "HCBM010529942026",
+        "HCBM010515262026",
+        "HCBM010511322026",
+        "HCBM010557282026",
+        "HCBM010501772026"
+      ],
+      "bench": "BHHC"
+    },
+    {
+      "name": "Madhya Pradesh High Court",
+      "website": null,
+      "cnrs": [
+        "MPHC010621432026",
+        "MPHC010592572026",
+        "MPHC010681312025",
+        "MPHC010249652025",
+        "MPHC010115752025"
+      ],
+      "bench": "MPHC"
+    }
+  ]
+}

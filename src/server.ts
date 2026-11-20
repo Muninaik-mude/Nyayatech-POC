@@ -38,6 +38,12 @@ app.get("/api/reference/cnr-prefix-map", (c) => {
   return c.json(CNR_PREFIX_TO_BENCH);
 });
 
+// Sample CNRs per High Court (from data/high-court-cnrs.json)
+app.get("/api/reference/sample-cnrs", async (c) => {
+  const raw = await fs.promises.readFile(path.resolve("data/high-court-cnrs.json"), "utf8");
+  return c.json(JSON.parse(raw));
+});
+
 // Debug: fetch a URL through any tier — saves full HTML to runs/debug_*.html
 app.get("/api/debug/fetch", async (c) => {
   const url = c.req.query("url");

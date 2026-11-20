@@ -1,400 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Courts POC</title>
-<meta name="claude:viewport-fit-sides" content="cover">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: two-column on wide, stacked on narrow. Left = form+controls, Right = results */
-:root {
-  --bg: #f7f8fa;
-  --surface: #ffffff;
-  --surface2: #f0f2f6;
-  --border: #dde1ea;
-  --fg: #111827;
-  --fg2: #4b5563;
-  --fg3: #9ca3af;
-  --accent: #1d4ed8;
-  --accent-bg: #eff6ff;
-  --accent-hover: #1e40af;
-  --ok: #047857;
-  --ok-bg: #ecfdf5;
-  --warn: #b45309;
-  --warn-bg: #fffbeb;
-  --err: #b91c1c;
-  --err-bg: #fef2f2;
-  --tier-http: #0369a1;
-  --tier-lp: #7c3aed;
-  --tier-cr: #374151;
-  --radius: 8px;
-  --radius-sm: 5px;
-  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
-  --ff-head: 'Space Grotesk', system-ui, sans-serif;
-  --ff-body: 'Inter', system-ui, sans-serif;
-  --ff-mono: 'JetBrains Mono', 'Fira Code', monospace;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0f1117; --surface: #1a1d27; --surface2: #242736;
-    --border: #2e3347; --fg: #e8eaf2; --fg2: #9aa0b8; --fg3: #6b7294;
-    --accent: #60a5fa; --accent-bg: #1e2d4a; --accent-hover: #93c5fd;
-    --ok: #34d399; --ok-bg: #052e16; --warn: #fbbf24; --warn-bg: #2d1a00;
-    --err: #f87171; --err-bg: #2d0707;
-    --tier-http: #38bdf8; --tier-lp: #c084fc; --tier-cr: #9ca3af;
-    --shadow: 0 1px 3px rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.3);
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #0f1117; --surface: #1a1d27; --surface2: #242736;
-  --border: #2e3347; --fg: #e8eaf2; --fg2: #9aa0b8; --fg3: #6b7294;
-  --accent: #60a5fa; --accent-bg: #1e2d4a; --accent-hover: #93c5fd;
-  --ok: #34d399; --ok-bg: #052e16; --warn: #fbbf24; --warn-bg: #2d1a00;
-  --err: #f87171; --err-bg: #2d0707;
-  --tier-http: #38bdf8; --tier-lp: #c084fc; --tier-cr: #9ca3af;
-  --shadow: 0 1px 3px rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.3);
-  color-scheme: dark;
-}
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
-html, body { height: 100%; font-family: var(--ff-body); font-size: 14px; color: var(--fg); background: var(--bg) }
-body {
-  display: flex; flex-direction: column; min-height: 100%;
-  padding-left: max(16px, env(safe-area-inset-left,0px));
-  padding-right: max(16px, env(safe-area-inset-right,0px));
-  padding-block: 0;
-}
+:root{--bg:#f5f6f8;--surface:#fff;--surface2:#f0f2f6;--border:#e1e4ea;--fg:#111827;--fg2:#4b5563;--fg3:#8a93a3;--accent:#1d4ed8;--accent-bg:#eff6ff;--accent-hover:#1e40af;--ok:#047857;--ok-bg:#ecfdf5;--warn:#b45309;--warn-bg:#fffbeb;--err:#b91c1c;--err-bg:#fef2f2;--tier-http:#0369a1;--tier-lp:#7c3aed;--tier-cr:#374151;--radius:12px;--radius-sm:8px;--shadow:0 1px 3px rgba(16,24,40,.06),0 4px 12px rgba(16,24,40,.04);--ff:'Inter',system-ui,sans-serif;--ff-mono:'JetBrains Mono',ui-monospace,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1117;--surface:#1a1d27;--surface2:#242736;--border:#2e3347;--fg:#e8eaf2;--fg2:#9aa0b8;--fg3:#6b7294;--accent:#60a5fa;--accent-bg:#1e2d4a;--accent-hover:#93c5fd;--ok:#34d399;--ok-bg:#052e16;--warn:#fbbf24;--warn-bg:#2d1a00;--err:#f87171;--err-bg:#2d0707;--tier-http:#38bdf8;--tier-lp:#c084fc;--tier-cr:#9ca3af;--shadow:0 1px 3px rgba(0,0,0,.4);color-scheme:dark}}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--ff);font-size:14px;color:var(--fg);background:var(--bg);min-height:100vh;line-height:1.5}
+.container{max-width:1280px;margin:0 auto;padding:0 16px 48px}
+.header{display:flex;align-items:center;gap:10px;padding:20px 0}
+.header h1{font-size:18px;font-weight:600;letter-spacing:-.01em}
+.header .sub{margin-left:auto;font-size:12px;color:var(--fg3)}
 
-/* Header */
-.header {
-  display: flex; align-items: center; gap: 12px;
-  padding: 14px 0 12px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 16px;
-}
-.header h1 { font-family: var(--ff-head); font-size: 18px; font-weight: 700; letter-spacing: -.02em }
-.header .sub { font-size: 12px; color: var(--fg3); margin-left: auto; display: flex; align-items: center; gap: 8px }
-.env-badge { font-family: var(--ff-mono); font-size: 11px; padding: 2px 7px; border-radius: 999px; background: var(--surface2); border: 1px solid var(--border) }
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.search-card{padding:20px}
+.seg{display:inline-flex;gap:2px;padding:3px;background:var(--surface2);border-radius:var(--radius-sm);margin-bottom:16px}
+.seg button{padding:6px 16px;border:none;background:transparent;border-radius:6px;font:500 13px var(--ff);color:var(--fg2);cursor:pointer}
+.seg button.active{background:var(--surface);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.1);font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:12px}
+.field label{display:block;font-size:12px;font-weight:500;color:var(--fg2);margin-bottom:5px}
+.field select,.field input{width:100%;height:40px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--fg);font:14px var(--ff);outline:none;transition:border-color .15s,box-shadow .15s}
+.field select:focus,.field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+.mono{font-family:var(--ff-mono)!important;letter-spacing:.03em}
+.combo{position:relative}
+.combo-list{position:absolute;z-index:20;left:0;right:0;top:calc(100% + 4px);max-height:240px;overflow:auto;list-style:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow)}
+.combo-list[hidden]{display:none}
+.combo-list li{padding:9px 12px;font:13px var(--ff-mono);cursor:pointer}
+.combo-list li:hover{background:var(--surface2)}
+.hint{font-size:12px;color:var(--ok);margin:-4px 0 12px}
+.actions{display:flex;align-items:center;gap:16px;margin-top:4px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:42px;padding:0 28px;border:none;border-radius:var(--radius-sm);background:var(--accent);color:#fff;font:600 14px var(--ff);cursor:pointer;transition:background .15s}
+.btn:hover:not(:disabled){background:var(--accent-hover)}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.btn:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 35%,transparent);outline-offset:2px}
+.adv{margin-left:auto;font-size:13px;color:var(--fg2)}
+.adv summary{cursor:pointer;user-select:none}
+.adv-body{display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap}
+.adv-body select{height:34px;padding:0 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--fg);font:13px var(--ff)}
+.adv-body label.cb{display:flex;align-items:center;gap:6px;cursor:pointer}
+.btn-spinner{width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-/* Two-column layout */
-.layout { display: grid; grid-template-columns: 340px 1fr; gap: 16px; align-items: start; flex: 1; padding-bottom: 32px }
-@media (max-width: 800px) { .layout { grid-template-columns: 1fr } }
-
-/* Left panel */
-.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow) }
-.panel-head { padding: 12px 14px; border-bottom: 1px solid var(--border); font-family: var(--ff-head); font-size: 13px; font-weight: 600; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px }
-.panel-head .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent) }
-.panel-body { padding: 14px }
-
-/* Form */
-.field { margin-bottom: 12px }
-.field label { display: block; font-size: 11.5px; font-weight: 600; color: var(--fg2); margin-bottom: 5px; letter-spacing: .03em; text-transform: uppercase }
-.field select, .field input {
-  width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
-  background: var(--surface); color: var(--fg); font-family: var(--ff-body); font-size: 13.5px;
-  transition: border-color .15s, box-shadow .15s; outline: none;
-}
-.field select:focus, .field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent) }
-.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px }
-.field-row .field { margin-bottom: 0 }
-.field-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px }
-.field-row3 .field { margin-bottom: 0 }
-
-.search-by-tabs { display: flex; gap: 2px; padding: 3px; background: var(--surface2); border-radius: var(--radius-sm); margin-bottom: 14px }
-.search-by-tabs button {
-  flex: 1; padding: 5px 4px; border: none; background: transparent; border-radius: 4px;
-  font-size: 12px; font-weight: 500; color: var(--fg2); cursor: pointer; transition: all .15s
-}
-.search-by-tabs button.active { background: var(--surface); color: var(--fg); box-shadow: 0 1px 3px rgba(0,0,0,.1); font-weight: 600 }
-
-.tier-row { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-top: 1px solid var(--border); margin-top: 4px }
-.tier-row label { font-size: 11.5px; font-weight: 600; color: var(--fg2); text-transform: uppercase; letter-spacing: .03em; white-space: nowrap }
-.tier-row select { flex: 1; padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--fg); font-size: 12.5px }
-.tier-row .bench-cb { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--fg2); white-space: nowrap; cursor: pointer; user-select: none }
-.tier-row .bench-cb input { margin: 0; cursor: pointer }
-
-/* Buttons */
-.btn-row { display: flex; gap: 8px; margin-top: 12px }
-.btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 16px; border: none; border-radius: var(--radius-sm); font-family: var(--ff-body); font-size: 13.5px; font-weight: 600; cursor: pointer; transition: all .15s; outline: none }
-.btn:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent) }
-.btn-quick { flex: 1; background: var(--accent); color: #fff }
-.btn-quick:hover:not(:disabled) { background: var(--accent-hover) }
-.btn-deep { flex: 1; background: var(--surface2); color: var(--fg); border: 1px solid var(--border) }
-.btn-deep:hover:not(:disabled) { background: var(--border) }
-.btn:disabled { opacity: .45; cursor: not-allowed }
-.btn-spinner { width: 14px; height: 14px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin .6s linear infinite }
-@keyframes spin { to { transform: rotate(360deg) } }
-
-/* Right panel */
-.results-wrap { display: flex; flex-direction: column; gap: 12px; min-width: 0 }
-.empty-state { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 40px 24px; text-align: center; color: var(--fg3) }
-.empty-state .illo { font-size: 36px; margin-bottom: 10px }
-.empty-state p { font-size: 13.5px; line-height: 1.6 }
-
-/* Tabs */
-.tabs { display: flex; border-bottom: 1px solid var(--border); gap: 0; padding: 0 14px; background: var(--surface); border-radius: var(--radius) var(--radius) 0 0; overflow-x: auto }
-.tab-btn { padding: 10px 14px; border: none; background: transparent; color: var(--fg2); font-size: 13px; font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; transition: color .15s }
-.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600 }
-.tab-btn:hover:not(.active) { color: var(--fg) }
-.tab-pane { display: none }
-.tab-pane.active { display: block }
-
-/* Result card */
-.result-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden }
-.result-card .tabs { border-radius: 0 }
-
-.case-header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 12px }
-.case-title { flex: 1; min-width: 0 }
-.case-title h2 { font-family: var(--ff-head); font-size: 15px; font-weight: 700; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-.case-title .meta { font-size: 12px; color: var(--fg2); margin-top: 3px; display: flex; flex-wrap: wrap; gap: 6px 12px }
-.case-title .meta span { display: flex; align-items: center; gap: 4px }
-
-.status-pill { font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap }
-.status-pill.ok { background: var(--ok-bg); color: var(--ok) }
-.status-pill.pending { background: var(--warn-bg); color: var(--warn) }
-.status-pill.other { background: var(--surface2); color: var(--fg2) }
-
-.tier-badge { font-family: var(--ff-mono); font-size: 10.5px; font-weight: 500; padding: 2px 7px; border-radius: 999px; white-space: nowrap }
-.tier-badge.http { background: color-mix(in srgb, var(--tier-http) 12%, transparent); color: var(--tier-http) }
-.tier-badge.lightpanda { background: color-mix(in srgb, var(--tier-lp) 12%, transparent); color: var(--tier-lp) }
-.tier-badge.chromium { background: color-mix(in srgb, var(--tier-cr) 12%, transparent); color: var(--tier-cr) }
-
-/* Field table */
-.field-table { width: 100%; border-collapse: collapse; font-size: 13px }
-.field-table td { padding: 7px 16px; border-bottom: 1px solid var(--border); vertical-align: top }
-.field-table td:first-child { width: 38%; font-weight: 500; color: var(--fg2); font-size: 12px; text-transform: uppercase; letter-spacing: .03em }
-.field-table tr:last-child td { border-bottom: none }
-.field-table td code { font-family: var(--ff-mono); font-size: 12px; background: var(--surface2); padding: 1px 5px; border-radius: 3px }
-
-/* Hearings table */
-.table-wrap { overflow-x: auto; min-width: 0 }
-.data-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums }
-.data-table th { text-align: left; padding: 8px 12px; font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--fg2); background: var(--surface2); border-bottom: 1px solid var(--border) }
-.data-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--fg) }
-.data-table tr:last-child td { border-bottom: none }
-.data-table tr:hover td { background: var(--surface2) }
-
-/* Documents */
-.doc-list { list-style: none; display: flex; flex-direction: column; gap: 0 }
-.doc-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--border) }
-.doc-item:last-child { border-bottom: none }
-.doc-icon { font-size: 18px; flex-shrink: 0 }
-.doc-info { flex: 1; min-width: 0 }
-.doc-info .doc-name { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-.doc-info .doc-date { font-size: 11.5px; color: var(--fg2) }
-.doc-link { font-size: 12px; padding: 4px 10px; border-radius: var(--radius-sm); background: var(--accent-bg); color: var(--accent); font-weight: 600; text-decoration: none; white-space: nowrap }
-.doc-link:hover { background: color-mix(in srgb, var(--accent) 20%, transparent) }
-
-/* Deep diff */
-.deep-diff { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; padding: 14px 16px }
-.deep-diff li { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--ok-bg); color: var(--ok); font-weight: 600 }
-
-/* Parties */
-.party-list { list-style: none; display: flex; flex-direction: column; gap: 0 }
-.party-item { display: flex; align-items: baseline; gap: 10px; padding: 7px 16px; border-bottom: 1px solid var(--border) }
-.party-item:last-child { border-bottom: none }
-.party-role { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; min-width: 90px; color: var(--fg3) }
-.party-name { font-size: 13px; font-weight: 500 }
-.party-adv { font-size: 12px; color: var(--fg2); margin-left: auto }
-
-/* Raw HTML */
-.raw-frame { background: var(--surface2); border-radius: 0 0 var(--radius) var(--radius) }
-.raw-actions { padding: 10px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border) }
-.raw-actions .btn-sm { font-size: 12px; padding: 5px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--fg); cursor: pointer; font-weight: 500 }
-.raw-scroll { max-height: 320px; overflow: auto; padding: 12px 16px }
-.raw-scroll pre { font-family: var(--ff-mono); font-size: 11.5px; white-space: pre-wrap; word-break: break-all; color: var(--fg2) }
-
-/* Metrics panel */
-.metrics-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 }
-.metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0; border-bottom: 1px solid var(--border) }
-.metric-cell { padding: 12px 14px; border-right: 1px solid var(--border) }
-.metric-cell:last-child { border-right: none }
-.metric-cell .label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--fg3); margin-bottom: 4px }
-.metric-cell .value { font-family: var(--ff-mono); font-size: 18px; font-weight: 500; color: var(--fg); font-variant-numeric: tabular-nums }
-.metric-cell .unit { font-size: 11px; color: var(--fg3); margin-left: 2px }
-
-.escalations { padding: 10px 14px; font-size: 12px; color: var(--fg2); display: flex; flex-wrap: wrap; gap: 4px; align-items: center }
-.escalations .esc { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: var(--warn-bg); color: var(--warn); border-radius: 999px; font-size: 11.5px; font-weight: 500 }
-
-/* Error state */
-.error-banner { background: var(--err-bg); border: 1px solid color-mix(in srgb, var(--err) 30%, transparent); border-radius: var(--radius); padding: 12px 16px; display: flex; align-items: flex-start; gap: 10px }
-.error-banner .ico { font-size: 16px; flex-shrink: 0; margin-top: 1px }
-.error-banner .msg { font-size: 13px; color: var(--err); line-height: 1.5 }
-
-/* Loading overlay */
-.loading-overlay { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 48px 24px; color: var(--fg2); font-size: 13.5px }
-
-/* Misc */
-.section-label { padding: 10px 16px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--fg3); border-bottom: 1px solid var(--border) }
-.empty-list { padding: 20px 16px; color: var(--fg3); font-size: 13px; text-align: center; font-style: italic }
-
-/* Two-result comparison layout */
-.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px }
-@media (max-width: 700px) { .compare-grid { grid-template-columns: 1fr } }
-.compare-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--fg3); padding: 8px 14px; border-bottom: 1px solid var(--border); background: var(--surface2) }
+.layout{display:grid;grid-template-columns:360px minmax(0,1fr);gap:20px;align-items:start}
+.search-col{position:sticky;top:16px}
+.layout .grid{grid-template-columns:1fr 1fr}
+.layout .grid>.full,.layout #hcFields{grid-column:1/-1}
+.layout #form-case.grid .field:first-child,.layout #districtFields .field:last-child{grid-column:1/-1}
+@media(max-width:860px){.layout{grid-template-columns:1fr}.search-col{position:static}}
+#resultsWrap{display:flex;flex-direction:column;gap:16px;min-width:0}
+.empty-state{padding:36px 24px;text-align:center;color:var(--fg3);font-size:13.5px}
+.empty-state .illo{font-size:32px;margin-bottom:6px}
+.loading-overlay{display:flex;align-items:center;justify-content:center;gap:10px;padding:40px 24px;color:var(--fg2)}
+.result-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.case-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:12px}
+.case-title{flex:1;min-width:0}
+.case-title h2{font-size:17px;font-weight:600;letter-spacing:-.01em}
+.case-title .meta{font-size:12.5px;color:var(--fg2);margin-top:4px;display:flex;flex-wrap:wrap;gap:4px 14px}
+.case-title code{font-family:var(--ff-mono);font-size:12px}
+.status-pill{font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.status-pill.ok{background:var(--ok-bg);color:var(--ok)}.status-pill.pending{background:var(--warn-bg);color:var(--warn)}.status-pill.other{background:var(--surface2);color:var(--fg2)}
+.tier-badge{font-family:var(--ff-mono);font-size:11px;padding:2px 8px;border-radius:999px}
+.tier-badge.http{background:color-mix(in srgb,var(--tier-http) 12%,transparent);color:var(--tier-http)}
+.tier-badge.lightpanda{background:color-mix(in srgb,var(--tier-lp) 12%,transparent);color:var(--tier-lp)}
+.tier-badge.chromium{background:color-mix(in srgb,var(--tier-cr) 12%,transparent);color:var(--tier-cr)}
+.tabs{display:flex;border-bottom:1px solid var(--border);padding:0 12px;overflow-x:auto}
+.tab-btn{padding:11px 14px;border:none;background:transparent;color:var(--fg2);font:500 13px var(--ff);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.tab-pane{display:none}.tab-pane.active{display:block}
+.field-table{width:100%;border-collapse:collapse;font-size:13.5px}
+.field-table td{padding:10px 20px;border-bottom:1px solid var(--border);vertical-align:top}
+.field-table td:first-child{width:34%;color:var(--fg2);font-size:12.5px}
+.field-table tr:last-child td{border-bottom:none}
+.table-wrap{overflow-x:auto}
+.data-table{width:100%;border-collapse:collapse;font-size:13px}
+.data-table th{text-align:left;padding:9px 14px;font-size:12px;font-weight:600;color:var(--fg2);background:var(--surface2);border-bottom:1px solid var(--border)}
+.data-table td{padding:9px 14px;border-bottom:1px solid var(--border)}
+.data-table tr:last-child td{border-bottom:none}
+.doc-list,.party-list{list-style:none}
+.doc-item,.party-item{display:flex;align-items:center;gap:10px;padding:10px 20px;border-bottom:1px solid var(--border)}
+.doc-item:last-child,.party-item:last-child{border-bottom:none}
+.doc-info{flex:1;min-width:0}.doc-name{font-weight:500}.doc-date{font-size:12px;color:var(--fg2)}
+.doc-link{font-size:12px;padding:4px 10px;border-radius:6px;background:var(--accent-bg);color:var(--accent);font-weight:600;text-decoration:none}
+.party-role{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;min-width:90px;color:var(--fg3)}
+.party-adv{font-size:12px;color:var(--fg2);margin-left:auto}
+.raw-actions{padding:10px 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);font-size:12px;color:var(--fg2)}
+.btn-sm{font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--fg);cursor:pointer}
+.raw-scroll{max-height:320px;overflow:auto;padding:12px 20px}
+.raw-scroll pre{font-family:var(--ff-mono);font-size:11.5px;white-space:pre-wrap;word-break:break-all;color:var(--fg2)}
+.panel-head{padding:12px 20px;border-bottom:1px solid var(--border);font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px}
+.panel-head .dot{width:8px;height:8px;border-radius:50%}
+.metrics-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
+.metric-cell{padding:12px 20px;border-right:1px solid var(--border)}
+.metric-cell:last-child{border-right:none}
+.metric-cell .label{font-size:11.5px;color:var(--fg3);margin-bottom:2px}
+.metric-cell .value{font-family:var(--ff-mono);font-size:17px;font-weight:500}
+.metric-cell .unit{font-size:11px;color:var(--fg3);margin-left:2px}
+.escalations{padding:10px 20px;border-top:1px solid var(--border);font-size:12px;color:var(--fg2);display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.esc{padding:2px 8px;background:var(--warn-bg);color:var(--warn);border-radius:999px;font-size:11.5px}
+.error-banner{background:var(--err-bg);border:1px solid color-mix(in srgb,var(--err) 30%,transparent);border-radius:var(--radius);padding:14px 18px;display:flex;gap:10px}
+.error-banner .msg{color:var(--err);font-size:13px}
+.empty-list{padding:24px 20px;color:var(--fg3);text-align:center}
+.compare-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.compare-label{font-size:12px;font-weight:600;padding:10px 20px;border-bottom:1px solid var(--border);background:var(--surface2)}
+@media(max-width:560px){.case-header{flex-direction:column}.adv{margin-left:0}}
 </style>
-
-<div class="header">
-  <svg width="22" height="22" viewBox="0 0 22 22" fill="none" style="flex-shrink:0">
-    <rect width="22" height="22" rx="5" fill="var(--accent)"/>
-    <path d="M4 16h14M7 10h8M11 6v4M7 10v6M15 10v6" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
-  </svg>
-  <h1>Courts POC</h1>
-  <div class="sub">
-    <span class="env-badge" id="providerBadge">claude captcha</span>
-    <span class="env-badge" id="tierBadge">auto tier</span>
-    <span style="font-size:11px;color:var(--fg3)">Nov 2026 · local only</span>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <svg width="24" height="24" viewBox="0 0 22 22" fill="none"><rect width="22" height="22" rx="5" fill="var(--accent)"/><path d="M4 16h14M7 10h8M11 6v4M7 10v6M15 10v6" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>
+    <h1>Courts POC</h1>
+    <div class="sub">Indian court case search</div>
   </div>
-</div>
 
 <div class="layout">
-  <!-- Left: Search form -->
-  <div>
-    <div class="panel">
-      <div class="panel-head"><div class="dot"></div>Search</div>
-      <div class="panel-body">
+<div class="search-col">
+  <div class="card search-card">
+    <div class="seg" id="searchBy">
+      <button class="active" data-by="cnr" onclick="setSearchBy('cnr',this)">CNR</button>
+      <button data-by="case" onclick="setSearchBy('case',this)">Case No</button>
+      <button data-by="filing" onclick="setSearchBy('filing',this)">Filing No</button>
+    </div>
 
-        <!-- Court level -->
-        <div class="field">
-          <label>Court level</label>
-          <select id="courtLevel" onchange="onCourtChange()">
-            <option value="district">District Court</option>
-            <option value="high_court">High Court</option>
-          </select>
-        </div>
-
-        <!-- State + District (district courts) -->
-        <div id="districtFields">
-          <div class="field-row">
-            <div class="field">
-              <label>State</label>
-              <select id="stateSelect" onchange="onStateChange()">
-                <option value="">— select —</option>
-                <option value="2">Andhra Pradesh</option>
-                <option value="36">Telangana</option>
-                <option value="27">Maharashtra</option>
-                <option value="33">Tamil Nadu</option>
-                <option value="29">Karnataka</option>
-                <option value="32">Kerala</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>District</label>
-              <input id="districtInput" placeholder="district code" />
-            </div>
-          </div>
-          <div class="field">
-            <label>Court complex</label>
-            <input id="complexInput" placeholder="court complex code" />
-          </div>
-        </div>
-
-        <!-- HC Bench selector -->
-        <div id="hcFields" style="display:none">
-          <div class="field">
-            <label>High Court / Bench</label>
-            <select id="benchSelect">
-              <option value="APHC">Andhra Pradesh High Court</option>
-              <option value="TSHC">Telangana High Court</option>
-              <option value="DLHC">Delhi High Court</option>
-              <option value="TNHC">Madras High Court (Madras)</option>
-              <option value="BHHC">Bombay High Court (Maharashtra)</option>
-              <option value="KRHC">Karnataka High Court</option>
-              <option value="KLHC">Kerala High Court</option>
-              <option value="ALHC">Allahabad High Court</option>
-              <option value="CLHC">Calcutta High Court</option>
-              <option value="GUHC">Gujarat High Court</option>
-              <option value="MPHC">Madhya Pradesh High Court</option>
-              <option value="RJHC">Rajasthan High Court</option>
-              <option value="PHHC">Punjab and Haryana High Court</option>
-              <option value="ORHC">Orissa High Court</option>
-              <option value="PTHC">Patna High Court</option>
-              <option value="GWHC">Gauhati High Court</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Search by tabs -->
-        <div class="search-by-tabs">
-          <button class="active" data-by="cnr" onclick="setSearchBy('cnr',this)">CNR</button>
-          <button data-by="case" onclick="setSearchBy('case',this)">Case No</button>
-          <button data-by="filing" onclick="setSearchBy('filing',this)">Filing No</button>
-        </div>
-
-        <!-- CNR -->
-        <div id="form-cnr" class="searchForm">
-          <div class="field">
-            <label>CNR Number</label>
-            <input id="cnrInput" placeholder="KAHC010112112026" style="font-family:var(--ff-mono);letter-spacing:.04em" oninput="autoDetectBench(this.value)" />
-          </div>
-          <div id="cnrHint" style="font-size:11.5px;color:var(--ok);margin-top:-6px;margin-bottom:8px;display:none"></div>
-        </div>
-
-        <!-- Case No -->
-        <div id="form-case" class="searchForm" style="display:none">
-          <div class="field-row3" style="display:grid;grid-template-columns:2fr 2fr 1fr;gap:8px">
-            <div class="field">
-              <label>Case type</label>
-              <input id="caseTypeInput" placeholder="WP, OS, CRL…" />
-            </div>
-            <div class="field">
-              <label>Number</label>
-              <input id="caseNumberInput" placeholder="000001" style="font-family:var(--ff-mono)" />
-            </div>
-            <div class="field">
-              <label>Year</label>
-              <input id="yearInput" placeholder="2024" style="font-family:var(--ff-mono)" maxlength="4" />
-            </div>
-          </div>
-        </div>
-
-        <!-- Filing No -->
-        <div id="form-filing" class="searchForm" style="display:none">
-          <div class="field-row">
-            <div class="field">
-              <label>Filing number</label>
-              <input id="filingInput" placeholder="000001" style="font-family:var(--ff-mono)" />
-            </div>
-            <div class="field">
-              <label>Year</label>
-              <input id="filingYearInput" placeholder="2024" style="font-family:var(--ff-mono)" maxlength="4" />
-            </div>
-          </div>
-        </div>
-
-        <!-- Tier controls -->
-        <div class="tier-row">
-          <label>Tier</label>
-          <select id="tierOverride">
-            <option value="auto">Auto (T0→T1→T2)</option>
-            <option value="http">T0 HTTP only</option>
-            <option value="lightpanda">T1 Lightpanda</option>
-            <option value="chromium">T2 Chromium</option>
-          </select>
-          <label class="bench-cb" title="Run all 3 tiers and compare">
-            <input type="checkbox" id="allTiers" /> All 3
-          </label>
-        </div>
-
-        <!-- Action buttons -->
-        <div class="btn-row">
-          <button class="btn btn-quick" id="btnQuick" onclick="doSearch('quick')">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1L2 7h4v6l5-6H7V1z" fill="currentColor"/></svg>
-            Quick search
-          </button>
-          <button class="btn btn-deep" id="btnDeep" onclick="doSearch('deep')">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.6"/><path d="M7 4v3l2 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-            Deep search
-          </button>
-        </div>
+    <div class="grid">
+      <div class="field full">
+        <label for="courtLevel">Court level</label>
+        <select id="courtLevel" onchange="onCourtChange()">
+          <option value="district">District Court</option>
+          <option value="high_court">High Court</option>
+        </select>
+      </div>
+      <div class="field" id="hcFields" style="display:none">
+        <label for="benchSelect">High Court</label>
+        <select id="benchSelect" onchange="loadCnrList()">
+          <option value="KRHC">Karnataka</option>
+          <option value="APHC">Andhra Pradesh</option>
+          <option value="TSHC">Telangana</option>
+          <option value="KLHC">Kerala</option>
+          <option value="DLHC">Delhi</option>
+          <option value="TNHC">Madras (Tamil Nadu)</option>
+          <option value="BHHC">Bombay (Maharashtra)</option>
+          <option value="MPHC">Madhya Pradesh</option>
+        </select>
       </div>
     </div>
-  </div>
 
-  <!-- Right: Results -->
-  <div class="results-wrap" id="resultsWrap">
-    <div class="empty-state">
-      <div class="illo">⚖️</div>
-      <p>Enter a case number and click <strong>Quick search</strong> or <strong>Deep search</strong>.<br>
-      Results, raw HTML, and run metrics appear here.</p>
+    <div id="districtFields" class="grid">
+      <div class="field">
+        <label for="stateSelect">State</label>
+        <select id="stateSelect" onchange="onStateChange()">
+          <option value="">Select state</option>
+          <option value="2">Andhra Pradesh</option><option value="36">Telangana</option><option value="27">Maharashtra</option>
+          <option value="33">Tamil Nadu</option><option value="29">Karnataka</option><option value="32">Kerala</option>
+        </select>
+      </div>
+      <div class="field"><label for="districtInput">District</label><input id="districtInput" placeholder="District code"></div>
+      <div class="field"><label for="complexInput">Court complex</label><input id="complexInput" placeholder="Complex code"></div>
+    </div>
+
+    <div id="form-cnr" class="searchForm">
+      <div class="field" style="margin-bottom:12px">
+        <label for="cnrInput">CNR number</label>
+        <div class="combo">
+          <input id="cnrInput" class="mono" placeholder="Select or type a CNR" oninput="autoDetectBench(this.value)" autocomplete="off">
+          <ul id="cnrList" class="combo-list" hidden></ul>
+        </div>
+      </div>
+      
+      <div id="cnrHint" class="hint" style="display:none"></div>
+    </div>
+
+    <div id="form-case" class="searchForm grid" style="display:none">
+      <div class="field"><label for="caseTypeInput">Case type</label><input id="caseTypeInput" placeholder="WP, OS, CRL…"></div>
+      <div class="field"><label for="caseNumberInput">Number</label><input id="caseNumberInput" class="mono" placeholder="000001"></div>
+      <div class="field"><label for="yearInput">Year</label><input id="yearInput" class="mono" placeholder="2024" maxlength="4"></div>
+    </div>
+
+    <div id="form-filing" class="searchForm grid" style="display:none">
+      <div class="field"><label for="filingInput">Filing number</label><input id="filingInput" class="mono" placeholder="000001"></div>
+      <div class="field"><label for="filingYearInput">Year</label><input id="filingYearInput" class="mono" placeholder="2024" maxlength="4"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" id="btnSearch" onclick="doSearch()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.8"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Search
+      </button>
     </div>
   </div>
+
+</div>
+
+  <div id="resultsWrap">
+    <div class="card empty-state">
+      <div class="illo">⚖️</div>
+      Enter a case number and press <strong>Search</strong>.<br>Results will appear here.
+    </div>
+  </div>
+</div>
 </div>
 
 <script>
@@ -436,7 +242,39 @@ function autoDetectBench(cnr) {
   }
 }
 
+let sampleCnrs = [];
+function currentCnrEntry() {
+  if (document.getElementById('courtLevel').value !== 'high_court') return null;
+  const bench = document.getElementById('benchSelect').value;
+  return sampleCnrs.find(c => c.bench === bench) || null;
+}
+function loadCnrList() {
+  const entry = currentCnrEntry();
+  const ul = document.getElementById('cnrList');
+  ul.innerHTML = (entry ? entry.cnrs : []).map(n => `<li data-cnr="${esc(n)}">${esc(n)}</li>`).join('');
+  document.getElementById('cnrInput').placeholder = entry ? `Select one of ${entry.cnrs.length} ${entry.name} CNRs` : 'Enter CNR number';
+  ul.hidden = true;
+}
+function showCnrList() {
+  const ul = document.getElementById('cnrList');
+  ul.hidden = !ul.children.length;   // always show the full list, regardless of current value
+}
+(function () {
+  const inp = document.getElementById('cnrInput'), ul = document.getElementById('cnrList');
+  inp.addEventListener('focus', showCnrList);
+  inp.addEventListener('click', showCnrList);
+  ul.addEventListener('mousedown', e => {
+    const li = e.target.closest('li'); if (!li) return;
+    e.preventDefault();
+    inp.value = li.dataset.cnr;
+    ul.hidden = true;
+    autoDetectBench(inp.value);
+  });
+  document.addEventListener('mousedown', e => { if (!e.target.closest('.combo')) ul.hidden = true; });
+})();
+
 function onCourtChange() {
+  loadCnrList();
   const v = document.getElementById('courtLevel').value;
   document.getElementById('districtFields').style.display = v === 'district' ? '' : 'none';
   document.getElementById('hcFields').style.display = v === 'high_court' ? '' : 'none';
@@ -446,7 +284,7 @@ function onStateChange() {}
 
 function setSearchBy(by, btn) {
   currentSearchBy = by;
-  document.querySelectorAll('.search-by-tabs button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#searchBy button').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   document.querySelectorAll('.searchForm').forEach(f => f.style.display = 'none');
   document.getElementById('form-' + by).style.display = '';
@@ -455,7 +293,7 @@ function setSearchBy(by, btn) {
 function buildPayload() {
   const court = document.getElementById('courtLevel').value;
   const bench = court === 'high_court' ? document.getElementById('benchSelect').value : undefined;
-  const tier = document.getElementById('tierOverride').value;
+  const tier = 'auto';
   const base = { court, bench, searchBy: currentSearchBy, tier };
 
   if (currentSearchBy === 'cnr') {
@@ -476,32 +314,30 @@ function buildPayload() {
   return base;
 }
 
-async function doSearch(type) {
-  const allTiers = document.getElementById('allTiers').checked;
+async function doSearch() {
+  const type = 'quick';
+  const allTiers = false;
   const payload = buildPayload();
   const wrap = document.getElementById('resultsWrap');
 
-  setLoading(type, true);
-  wrap.innerHTML = `<div class="loading-overlay"><div class="btn-spinner"></div>${type === 'quick' ? 'Running quick search…' : 'Running deep search…'}</div>`;
+  setLoading(true);
+  wrap.innerHTML = `<div class="loading-overlay"><div class="btn-spinner"></div>Searching… this can take a few seconds while the captcha is solved</div>`;
 
   if (allTiers && type === 'quick') {
     await runAllTiers(payload);
   } else {
-    if (type === 'deep' && lastQuickResult) {
-      payload.quickRunId = lastQuickResult.runId;
-    }
     try {
       const res = await fetch(`/api/${type}`, {
         method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (type === 'quick') lastQuickResult = data;
-      wrap.innerHTML = renderResult(data, type);
+      wrap.innerHTML = renderResult(data);
     } catch (e) {
       wrap.innerHTML = renderError(e.message);
     }
   }
-  setLoading(type, false);
+  setLoading(false);
 }
 
 async function runAllTiers(payload) {
@@ -522,20 +358,19 @@ async function runAllTiers(payload) {
   wrap.innerHTML = renderCompare(results);
 }
 
-function setLoading(type, on) {
-  const btn = document.getElementById(type === 'quick' ? 'btnQuick' : 'btnDeep');
-  const other = document.getElementById(type === 'quick' ? 'btnDeep' : 'btnQuick');
-  if (on) {
-    btn.disabled = true; other.disabled = true;
-    btn.innerHTML = `<div class="btn-spinner"></div>${type === 'quick' ? 'Searching…' : 'Deep searching…'}`;
-  } else {
-    btn.disabled = false; other.disabled = false;
-    if (type === 'quick') btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1L2 7h4v6l5-6H7V1z" fill="currentColor"/></svg>Quick search`;
-    else btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.6"/><path d="M7 4v3l2 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Deep search`;
-  }
+function setLoading(on) {
+  const btn = document.getElementById('btnSearch');
+  btn.disabled = on;
+  btn.innerHTML = on
+    ? '<div class="btn-spinner"></div>Searching…'
+    : '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.8"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Search';
 }
 
-function renderResult(data, type) {
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.matches('input') && !document.getElementById('btnSearch').disabled) doSearch();
+});
+
+function renderResult(data) {
   if (!data.ok) {
     return `
       <div class="error-banner"><div class="ico">⚠</div><div class="msg"><strong>Search failed</strong><br>${esc(data.error || 'Unknown error')}</div></div>
@@ -571,8 +406,6 @@ function renderResult(data, type) {
         <button class="tab-btn" onclick="switchTab('${data.runId}','parties',this)">Parties</button>
         <button class="tab-btn" onclick="switchTab('${data.runId}','hearings',this)">Hearings (${(data.hearings||[]).length})</button>
         <button class="tab-btn" onclick="switchTab('${data.runId}','docs',this)">Documents (${(data.documents||[]).length})</button>
-        ${type === 'deep' && data.fieldsOnlyInDeep?.length ? `<button class="tab-btn" onclick="switchTab('${data.runId}','diff',this)">Deep only (${data.fieldsOnlyInDeep.length})</button>` : ''}
-        <button class="tab-btn" onclick="switchTab('${data.runId}','raw',this)">Raw HTML</button>
       </div>
 
       <div id="tab_${data.runId}_details" class="tab-pane active">
@@ -586,20 +419,6 @@ function renderResult(data, type) {
       </div>
       <div id="tab_${data.runId}_docs" class="tab-pane">
         ${renderDocuments(data.documents || [])}
-      </div>
-      ${type === 'deep' && data.fieldsOnlyInDeep?.length ? `
-      <div id="tab_${data.runId}_diff" class="tab-pane">
-        <div class="section-label">Fields present in deep search but not in quick search</div>
-        <ul class="deep-diff">${data.fieldsOnlyInDeep.map(f => `<li>${esc(f)}</li>`).join('')}</ul>
-      </div>` : ''}
-      <div id="tab_${data.runId}_raw" class="tab-pane">
-        <div class="raw-frame">
-          <div class="raw-actions">
-            <span style="font-size:12px;color:var(--fg2)">Run ID: <code style="font-family:var(--ff-mono)">${esc(data.runId)}</code></span>
-            <button class="btn-sm" onclick="copyRaw('${data.runId}')">Copy raw HTML</button>
-          </div>
-          <div class="raw-scroll"><pre id="raw_${data.runId}">Raw HTML not available in this view.\nCheck: runs/${esc(data.runId)}/</pre></div>
-        </div>
       </div>
     </div>
     ${renderMetrics(data.metrics)}
@@ -715,17 +534,6 @@ function switchTab(runId, tab, btn) {
   if (pane) pane.classList.add('active');
 }
 
-function copyRaw(runId) {
-  const pre = document.getElementById('raw_' + runId);
-  if (!pre) return;
-  try {
-    navigator.clipboard.writeText(pre.textContent || '').catch(() => {
-      const sel = window.getSelection(); const range = document.createRange();
-      range.selectNodeContents(pre); sel.removeAllRanges(); sel.addRange(range);
-    });
-  } catch {}
-}
-
 function esc(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -737,5 +545,11 @@ function esc(s) {
     const r = await fetch('/api/reference/cnr-prefix-map');
     if (r.ok) cnrPrefixMap = await r.json();
   } catch {}
+  try {
+    const r = await fetch('/api/reference/sample-cnrs');
+    if (r.ok) { sampleCnrs = (await r.json()).courts; loadCnrList(); }
+  } catch {}
 })();
 </script>
+</body>
+</html>
