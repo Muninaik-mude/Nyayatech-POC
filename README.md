@@ -82,8 +82,9 @@ fixtures/            Real saved portal responses, one folder per portal
 ## Tests and fixtures
 
 ```bash
-npm test            # 143 tests; no external network, no API keys needed
+npm test            # 151 tests; no external network, no API keys needed
 npm run report      # measurement table from runs/runs.jsonl (success, captcha solve rate, median/p90)
+npm run build-hierarchy  # state → district [→ complex] reference tree via a real Chrome (LEVEL=complexes for the full ~800-lookup crawl)
 npm run rate-probe  # how many requests/min this IP tolerates before a portal blocks (captcha-free page)
 npm run typecheck
 ```
@@ -113,26 +114,17 @@ sha256 of the case content (not tier or fetch time) for change detection.
 |---|---|---|
 | hcservices — CNR case page | **verified** against 11 real pages (10 courts) | all fields above except those below |
 | hcservices — filing search list | **verified** against a real response | other matches kept in `courtData.otherMatches` |
-| AP CSIS (`digi-courts.aphc.ap.gov.in/csis_ap/`) | **rewritten, not yet confirmed** | Protocol (`getCaseDetails.action`, base64 JSON, captcha = JPEG of "27 plus 3") and field names were read from the portal's own page script. The old connector used a placeholder page and invented URLs. No real response saved yet — see "Confirm AP CSIS" below. |
+| AP CSIS (`digi-courts.aphc.ap.gov.in/csis_ap/`) | **verified** against 4 real responses (captured live 2026-11-21: pending, disposed, with orders) | Identity, status, numbered parties + addresses (PII, in `courtData`), IA/MP applications, lower court, orders (no PDF link exists in the response, so none is invented), vakalath advocates, prayer. USR details, digital orders and connected cases keep their raw shape in `courtData`. Captcha ("91 plus 5") is read by the LLM and evaluated locally. |
 | TS CSIS (`csis.tshc.gov.in`) | **not implemented** | Behind a JavaScript bot challenge that plain HTTP cannot pass; endpoints not mapped. Fails fast with a clear message. Telangana is searchable by CNR via hcservices (`HBHC`). |
 | district (`services.ecourts.gov.in/ecourtindia_v6`) | **partly fixed, still unverified** | Captcha URL bug fixed (checked against the real home page, saved in `fixtures/district/`). The v6 search itself is multi-step AJAX with `app_token` chaining and custom headers — not mapped; results carry a `warnings` entry. |
 | AP cause list (`aphc.gov.in/Hcdbs`) | **verified** against a real page (court 2, 78 entries) | Public, no captcha. `GET /api/cause-list/ap/dates`, `/courts`, `/api/cause-list/ap?type=D&date=YYYY-MM-DD&court=2`. Cached 10 min. Unregistered cases flagged `filingNumberOnly`. |
 | TS cause list | **not built** | Same bot-challenge site as TS CSIS |
+| Court hierarchy (state → district → complex) | **script built and proven, data not yet saved** | `npm run build-hierarchy` read 36 states and a state's districts through Chrome in an earlier run; the portal then began answering HTTP 405 to this IP (even plain curl), so no file was written. The script refuses to write an empty result. Re-run later. |
+| Order PDFs (AP) | **done, verified live** | POST `sdcorderpdf.action` / `sdceorderpdf.action` in the CSIS session; both order types of WP 1/2020 downloaded as real PDFs |
+| Pre-2013 CNRs | **answered** | AP HC cases from 2008, 2011 and 2012 all have `APHC01…` CNRs. (2005 returned nothing — not conclusive.) |
 | Interim orders, process details, caveat, transfers, notices | **not built** | Never present in any saved page, so nothing to parse without inventing it — capture a case that has them first |
 | Case duration | **done** | `caseDurationDays`: filing (else registration) → decision date, or → today while pending. Excluded from `contentHash`. |
 | Order PDFs | **wired** | The CNR job downloads each linked order PDF (max 10, `DOWNLOAD_ORDERS=0` to disable); dead links become `warnings`, not failures |
-
-### Confirm AP CSIS (one live capture)
-
-Needs your Indian IP and `ANTHROPIC_API_KEY`; sends one captcha image to the LLM per attempt (max 4):
-
-```bash
-CAPTURE_FIXTURES=1 npm run dev
-curl -s -X POST localhost:3000/api/deep -H 'content-type: application/json' \
-  -d '{"court":"high_court","bench":"APHC","searchBy":"case","caseType":"AS","caseNumber":"682","year":"2026"}'
-```
-Then review `fixtures/captured/digi-courts.aphc.ap.gov.in/` (base64 body, real court data), move it to
-`fixtures/csis-ap/`, replace the synthetic record in `tests/csis-ap.test.ts` with it, and remove the `warnings` line in `src/parsers/csis-ap.ts`.
 
 ## Security
 
@@ -148,6 +140,8 @@ Off-by-default conveniences are closed by default (all configurable in `.env`, s
 - **Cost cap:** `CAPTCHA_DAILY_BUDGET` (default 2000) limits paid LLM captcha calls per UTC day; see `GET /api/captcha/budget`. In-memory — resets on restart.
 
 **Lightpanda (AGPL-3.0):** the auto tier ladder skips it unless `ENABLE_LIGHTPANDA=1`, so by default nothing AGPL is used or contacted; HTTP and Chromium cover every working portal. Whether *using* it in a hosted service triggers AGPL obligations is a legal question this repo cannot answer — decide before enabling it in production.
+
+**Rate probe (2026-11-21, this laptop IP, captcha-free AP cause-list endpoint):** 21 requests over ~2 minutes, ramping 6 → 12 → 24 per minute, no blocking. That is a lower bound, not a ceiling — it stopped at 24/min on purpose. Captcha-gated case searches are limited by solves, not by this.
 
 **Deployment:** still a decision for you, not code: portals need an Indian egress IP. Run `npm run rate-probe` from the candidate host first to see what it tolerates.
 

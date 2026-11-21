@@ -10,7 +10,8 @@
     "test": "node --import tsx --test \"tests/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "report": "tsx scripts/report.ts",
-    "rate-probe": "tsx scripts/rate-probe.ts"
+    "rate-probe": "tsx scripts/rate-probe.ts",
+    "build-hierarchy": "tsx scripts/build-hierarchy.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

@@ -83,3 +83,24 @@ test("fetchBinary stores Set-Cookie in the jar (AP keeps the captcha answer in t
   srv.close();
   assert.deepEqual([...jar], [["JSESSIONID", "abc123"], ["x", "1"]]);
 });
+
+test("downloadPdf can POST a form (AP serves order PDFs this way) and checks the %PDF header", async () => {
+  const seen: string[] = [];
+  const srv = http.createServer((req, res) => {
+    let b = ""; req.on("data", (d) => (b += d)); req.on("end", () => {
+      seen.push(`${req.method} ${req.url} ${req.headers["content-type"]} ${b}`);
+      if (b.includes("fname=good")) { res.writeHead(200, { "Content-Type": "application/pdf" }); res.end(Buffer.from("%PDF-1.4 hello")); }
+      else { res.writeHead(200, { "Content-Type": "text/html" }); res.end("<html>expired</html>"); }
+    });
+  });
+  await new Promise<void>((r) => srv.listen(0, "127.0.0.1", r));
+  const url = `http://127.0.0.1:${(srv.address() as AddressInfo).port}/sdcorderpdf.action`;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pdf-"));
+  const ok = await downloadPdf({ url, form: { year: "2019", fname: "good", otype: "68" }, runId: "r1", runsDir: dir, name: "x" });
+  const bad = await downloadPdf({ url, form: { year: "2019", fname: "bad", otype: "68" }, runId: "r1", runsDir: dir, name: "y" });
+  srv.close();
+  assert.equal(seen[0], "POST /sdcorderpdf.action application/x-www-form-urlencoded year=2019&fname=good&otype=68");
+  assert.ok(ok.localPath && fs.readFileSync(ok.localPath).toString().startsWith("%PDF-1.4"));
+  assert.match(bad.error!, /not a PDF/);
+  assert.equal(bad.localPath, undefined);
+});

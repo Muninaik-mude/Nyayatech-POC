@@ -38,6 +38,7 @@ export interface Advocate {
   name: string;
   role: "petitioner_advocate" | "respondent_advocate" | "advocate" | string;
   forParties?: string[];     // names of the parties this advocate appears for
+  barCode?: string;          // PII: bar council / portal advocate code
 }
 
 export interface Hearing {
@@ -73,11 +74,13 @@ export interface Fir {
 // has been captured for them yet, so no parser sets them.
 export interface Order {
   number: string;
+  title?: string;            // document name as the portal labels it ("Final Order", "Spl Cell Orders")
   orderOn?: string;          // case number the order was passed on
   judge?: string;
   date?: string;             // ISO
   type: "order" | "interim_order" | "judgment";
   fileUrl?: string;          // absolute portal URL of the PDF
+  fileRequest?: { url: string; form: Record<string, string> };  // PDFs the portal serves by form POST (AP CSIS)
   localPath?: string;        // set once the PDF has been downloaded
 }
 

@@ -22,7 +22,7 @@ export type ImageMediaType = "image/png" | "image/jpeg" | "image/gif";
 // fetchWithTier() returns text, which mangles binary — never use it for files.
 export async function fetchBinary(
   url: string,
-  opts: { cookieJar?: Map<string, string>; headers?: Record<string, string>; accept?: string } = {}
+  opts: { cookieJar?: Map<string, string>; headers?: Record<string, string>; accept?: string; form?: Record<string, string> } = {}
 ): Promise<{ bytes: Buffer; contentType: string }> {
   const headers: Record<string, string> = {
     "User-Agent": UA,
@@ -32,7 +32,12 @@ export async function fetchBinary(
   if (opts.cookieJar && opts.cookieJar.size > 0) {
     headers["Cookie"] = [...opts.cookieJar.entries()].map(([k, v]) => `${k}=${v}`).join("; ");
   }
-  const res = await undiciFetch(url, { headers });
+  let body: string | undefined;
+  if (opts.form) { // POST a form (AP serves order PDFs this way)
+    body = new URLSearchParams(opts.form).toString();
+    headers["Content-Type"] = "application/x-www-form-urlencoded";
+  }
+  const res = await undiciFetch(url, { method: opts.form ? "POST" : "GET", headers, body });
   captureCookies(res, opts.cookieJar); // e.g. AP stores the captcha answer in the session this sets
   if (!res.ok) throw new Error(`fetchBinary ${url} → HTTP ${res.status}`);
   const bytes = Buffer.from(await res.arrayBuffer());

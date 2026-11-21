@@ -5,6 +5,8 @@ import { withCaptchaRetries } from "../core/captcha-loop.js";
 import { solveMathCaptcha } from "../core/mathCaptcha.js";
 import { decodeApResponse, parseApCsisRecord } from "../parsers/csis-ap.js";
 import { hcServicesSearch } from "./hcservices.js";
+import { captureFixture } from "../core/snapshot.js";
+import { downloadOrderPdfs } from "../core/pdf.js";
 
 // Real entry point of the AP High Court case-status site. (The old code used the bare host, which
 // serves only a 46-byte placeholder page, and an invented /case_search.php.)
@@ -85,11 +87,17 @@ export async function csisApSearch(
     },
   });
 
+  await captureFixture("digi-courts.aphc.ap.gov.in", `${mtype}-${mno}-${myear}`.replace(/[^\w-]/g, "_"), searchResult.html); // raw, before parsing
   const decoded = decodeApResponse(searchResult.html);
   if (!decoded.ok) throw new SearchError(decoded.reason, tracker.total, tracker.accepted); // unreachable: validated above
   const caseResult = parseApCsisRecord(decoded.records[0], { tier: searchResult.tier });
   if (decoded.records.length > 1) {
     caseResult.courtData = { ...caseResult.courtData, otherRecords: decoded.records.slice(1) };
+  }
+
+  // Order PDFs: the portal serves them by form POST inside the same session.
+  if (_runId && _runsDir && process.env.DOWNLOAD_ORDERS !== "0") {
+    await downloadOrderPdfs(caseResult, { runId: _runId, runsDir: _runsDir, cookieJar, headers: { Referer: `${BASE}/` } });
   }
 
   return {
