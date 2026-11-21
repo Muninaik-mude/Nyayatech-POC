@@ -1,10 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { consumeCaptchaCall } from "./budget.js";
 
-export type CaptchaMode = "text" | "math";
+// text = read the characters; math = read AND solve; expression = transcribe an arithmetic expression only
+// (the caller evaluates it locally with solveMathCaptcha — more reliable than LLM arithmetic).
+export type CaptchaMode = "text" | "math" | "expression";
 
 export interface CaptchaAttempt {
-  provider: "claude" | "gemini";
+  provider: "claude" | "gemini" | "local";
   mode: CaptchaMode;
   imageBytes: number;
   answer: string;
@@ -12,43 +15,68 @@ export interface CaptchaAttempt {
   durationMs: number;
 }
 
-const attempts: CaptchaAttempt[] = [];
+// Per-run captcha bookkeeping. One tracker is created per search and passed down to
+// solve(); nothing is stored at module level, so concurrent jobs cannot see each
+// other's attempts and nothing accumulates for the life of the process.
+export class CaptchaTracker {
+  readonly attempts: CaptchaAttempt[] = [];
 
-export function getCaptchaAttempts(): CaptchaAttempt[] {
-  return attempts;
+  get total(): number { return this.attempts.length; }
+  get accepted(): number { return this.attempts.filter((a) => a.accepted).length; }
+
+  // Mark the most recent attempt as accepted/rejected by the portal.
+  markLast(accepted: boolean): void {
+    if (this.attempts.length > 0) this.attempts[this.attempts.length - 1].accepted = accepted;
+  }
+
+  // Record an attempt that did not go through the LLM (e.g. arithmetic solved locally).
+  recordLocal(answer: string, mode: CaptchaMode): void {
+    this.attempts.push({ provider: "local", mode, imageBytes: 0, answer, accepted: false, durationMs: 0 });
+  }
+}
+
+// Thrown by connectors so the caller still gets captcha counts when a search fails.
+// (Without this, failed runs report 0 attempts and the solve rate looks better than it is.)
+export class SearchError extends Error {
+  constructor(message: string, readonly captchaAttempts = 0, readonly captchaSolves = 0) {
+    super(message);
+    this.name = "SearchError";
+  }
 }
 
 export async function solve(
   imageBase64: string,
   mode: CaptchaMode,
-  mediaType: "image/png" | "image/jpeg" | "image/gif" = "image/png"
+  mediaType: "image/png" | "image/jpeg" | "image/gif" = "image/png",
+  tracker?: CaptchaTracker
 ): Promise<string> {
   const provider = (process.env.CAPTCHA_PROVIDER ?? "claude") as "claude" | "gemini";
+  consumeCaptchaCall(); // spend cap — throws when the day's budget is used up
   const start = Date.now();
-  let answer = "";
+  const answer = provider === "claude"
+    ? await solveWithClaude(imageBase64, mode, mediaType)
+    : await solveWithGemini(imageBase64, mode, mediaType);
 
-  if (provider === "claude") {
-    answer = await solveWithClaude(imageBase64, mode, mediaType);
-  } else {
-    answer = await solveWithGemini(imageBase64, mode, mediaType);
-  }
-
-  attempts.push({
+  tracker?.attempts.push({
     provider,
     mode,
     imageBytes: Math.round((imageBase64.length * 3) / 4),
     answer,
-    accepted: false, // updated by connector after submission
+    accepted: false, // set by the connector via tracker.markLast() after the portal responds
     durationMs: Date.now() - start,
   });
 
   return answer;
 }
 
-export function markLastAttemptAccepted(accepted: boolean): void {
-  if (attempts.length > 0) {
-    attempts[attempts.length - 1].accepted = accepted;
+function captchaPrompt(mode: CaptchaMode): string {
+  if (mode === "expression") {
+    return "This image shows a short arithmetic expression, for example '27 plus 3' or '4 x 2'. Transcribe it exactly as written, keeping the spaces and operator words or symbols. Reply with ONLY the expression, do not solve it.";
   }
+  if (mode === "math") {
+    return "This image shows a math captcha (arithmetic expression). Solve it and reply with ONLY the numeric answer, nothing else.";
+  }
+  return "This is a captcha image. Read the text shown and reply with ONLY the captcha characters, no spaces or punctuation, in the exact case shown.";
 }
 
 async function solveWithClaude(
@@ -61,10 +89,7 @@ async function solveWithClaude(
   const client = new Anthropic({ apiKey });
   const model = process.env.CLAUDE_CAPTCHA_MODEL ?? "claude-haiku-5-5";
 
-  const prompt =
-    mode === "math"
-      ? "This image shows a math captcha (arithmetic expression). Solve it and reply with ONLY the numeric answer, nothing else."
-      : "This is a captcha image. Read the text shown and reply with ONLY the captcha characters, no spaces or punctuation, in the exact case shown.";
+  const prompt = captchaPrompt(mode);
 
   const msg = await client.messages.create({
     model,
@@ -95,10 +120,7 @@ async function solveWithGemini(
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-  const prompt =
-    mode === "math"
-      ? "This image shows a math captcha. Solve it and reply with ONLY the numeric answer."
-      : "This is a captcha image. Reply with ONLY the captcha text, no explanation.";
+  const prompt = captchaPrompt(mode);
 
   const mimeType = mediaType === "image/gif" ? "image/png" : mediaType;
   const result = await model.generateContent([

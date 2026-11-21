@@ -5,24 +5,63 @@ import { createConnection } from "net";
 
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-// Fetch a binary resource (captcha image, PDF) and return raw bytes + detected media type
+// Copy Set-Cookie headers from a response into the shared jar (name=value only).
+function captureCookies(res: { headers: { getSetCookie?: () => string[] } | any }, jar?: Map<string, string>): void {
+  if (!jar) return;
+  const setCookies: string[] = (res.headers as any).getSetCookie?.() ?? [];
+  for (const raw of setCookies) {
+    const eq = raw.indexOf("=");
+    const semi = raw.indexOf(";");
+    if (eq > 0) jar.set(raw.slice(0, eq).trim(), (semi > eq ? raw.slice(eq + 1, semi) : raw.slice(eq + 1)).trim());
+  }
+}
+
+export type ImageMediaType = "image/png" | "image/jpeg" | "image/gif";
+
+// Fetch any binary resource (PDF, captcha image) and return the RAW bytes.
+// fetchWithTier() returns text, which mangles binary — never use it for files.
+export async function fetchBinary(
+  url: string,
+  opts: { cookieJar?: Map<string, string>; headers?: Record<string, string>; accept?: string } = {}
+): Promise<{ bytes: Buffer; contentType: string }> {
+  const headers: Record<string, string> = {
+    "User-Agent": UA,
+    Accept: opts.accept ?? "*/*",
+    ...opts.headers,
+  };
+  if (opts.cookieJar && opts.cookieJar.size > 0) {
+    headers["Cookie"] = [...opts.cookieJar.entries()].map(([k, v]) => `${k}=${v}`).join("; ");
+  }
+  const res = await undiciFetch(url, { headers });
+  captureCookies(res, opts.cookieJar); // e.g. AP stores the captcha answer in the session this sets
+  if (!res.ok) throw new Error(`fetchBinary ${url} → HTTP ${res.status}`);
+  const bytes = Buffer.from(await res.arrayBuffer());
+  return { bytes, contentType: res.headers.get("content-type") ?? "" };
+}
+
+export function isPdf(bytes: Buffer): boolean {
+  return bytes.length > 4 && bytes.subarray(0, 5).toString("latin1") === "%PDF-";
+}
+
+export function detectImageType(bytes: Buffer): ImageMediaType | null {
+  if (bytes.length > 4 && bytes[0] === 0x89 && bytes.subarray(1, 4).toString("latin1") === "PNG") return "image/png";
+  if (bytes.length > 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  if (bytes.length > 4 && bytes.subarray(0, 4).toString("latin1") === "GIF8") return "image/gif";
+  return null;
+}
+
+// Captcha image: same raw-bytes path. The type comes from the file's magic bytes, and anything that
+// is not an image is rejected HERE — portals answer an expired session with an HTML page (HTTP 200),
+// and sending that to the LLM produced "400 Could not process image" in 7 of 132 historical runs.
 export async function fetchImageBytes(
   url: string,
   cookieJar?: Map<string, string>
-): Promise<{ bytes: Buffer; mediaType: "image/png" | "image/jpeg" | "image/gif" }> {
-  const headers: Record<string, string> = {
-    "User-Agent": UA,
-    Accept: "image/png,image/jpeg,image/*,*/*",
-  };
-  if (cookieJar && cookieJar.size > 0) {
-    headers["Cookie"] = [...cookieJar.entries()].map(([k, v]) => `${k}=${v}`).join("; ");
+): Promise<{ bytes: Buffer; mediaType: ImageMediaType }> {
+  const { bytes } = await fetchBinary(url, { cookieJar, accept: "image/png,image/jpeg,image/*,*/*" });
+  const mediaType = detectImageType(bytes);
+  if (!mediaType) {
+    throw new Error(`captcha response is not an image (${bytes.length} bytes, starts "${bytes.subarray(0, 30).toString("latin1").replace(/\s+/g, " ")}")`);
   }
-  const res = await undiciFetch(url, { headers });
-  const bytes = Buffer.from(await res.arrayBuffer());
-  const ct = res.headers.get("content-type") ?? "";
-  const mediaType = ct.includes("jpeg") || ct.includes("jpg") ? "image/jpeg"
-    : ct.includes("gif") ? "image/gif"
-    : "image/png";
   return { bytes, mediaType };
 }
 
@@ -88,19 +127,7 @@ class HttpTier implements TierFetcher {
       body,
     });
 
-    // Capture Set-Cookie back into the jar
-    if (opts.cookieJar) {
-      const setCookies: string[] = (res.headers as any).getSetCookie?.() ?? [];
-      for (const raw of setCookies) {
-        const eq = raw.indexOf("=");
-        const semi = raw.indexOf(";");
-        if (eq > 0) {
-          const name = raw.slice(0, eq).trim();
-          const value = (semi > eq ? raw.slice(eq + 1, semi) : raw.slice(eq + 1)).trim();
-          opts.cookieJar.set(name, value);
-        }
-      }
-    }
+    captureCookies(res, opts.cookieJar);
 
     const html = await res.text();
     console.log(`[http] status=${res.status} finalUrl=${res.url} ct=${res.headers.get("content-type")} htmlLen=${html.length}`);
@@ -251,7 +278,8 @@ export async function fetchWithTier(
   } else if (defaultTier !== "auto") {
     tierOrder = [{ tier: defaultTier as Tier, fetcher: getTierFetcher(defaultTier as Tier) }];
   } else {
-    // Auto: check Lightpanda availability once and skip it if not running
+    // Auto: Lightpanda (AGPL-3.0) is OFF unless ENABLE_LIGHTPANDA=1; otherwise check availability once
+    if (process.env.ENABLE_LIGHTPANDA !== "1") _lightpandaKnownDown = true;
     if (!_lightpandaKnownDown) {
       const lpUrl = new URL(process.env.LIGHTPANDA_URL ?? "ws://127.0.0.1:9222");
       const port = parseInt(lpUrl.port) || 9222;

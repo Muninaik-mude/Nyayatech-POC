@@ -6,7 +6,11 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "bench": "tsx src/bench.ts"
+    "bench": "tsx src/bench.ts",
+    "test": "node --import tsx --test \"tests/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "report": "tsx scripts/report.ts",
+    "rate-probe": "tsx scripts/rate-probe.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

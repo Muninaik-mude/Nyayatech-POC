@@ -1,9 +1,19 @@
 import * as cheerio from "cheerio";
 import { SearchInput, CaseResult, Tier } from "../core/types.js";
 import { fetchWithTier, fetchImageBytes, FetchWithTierResult } from "../core/tiers.js";
-import { solve, markLastAttemptAccepted } from "../core/captcha.js";
+import { withCaptchaRetries } from "../core/captcha-loop.js";
+import { solve, CaptchaTracker } from "../core/captcha.js";
 
 const BASE = "https://services.ecourts.gov.in/ecourtindia_v6";
+
+// The home page's captcha is <img id="captcha_image" src="/ecourtindia_v6/vendor/securimage/securimage_show.php?HASH">.
+// The src is root-relative and already contains /ecourtindia_v6, so it must be resolved against the ORIGIN —
+// joining it onto BASE produced .../ecourtindia_v6/ecourtindia_v6/vendor/... (a 404).
+export function findCaptchaUrl(html: string): string | undefined {
+  const $ = cheerio.load(html);
+  const src = $("img#captcha_image").attr("src") ?? $("img[src*='securimage_show']").attr("src") ?? $("img[src*='captcha']").attr("src");
+  return src ? new URL(src, `${BASE}/`).toString() : undefined;
+}
 
 export interface DistrictConnectorResult {
   caseResult: CaseResult;
@@ -13,74 +23,56 @@ export interface DistrictConnectorResult {
   durationMs: number;
   bytes: number;
   captchaAttempts: number;
+  captchaSolves: number;
 }
 
 export async function districtSearch(input: SearchInput, forceTier?: Tier): Promise<DistrictConnectorResult> {
   const start = Date.now();
-  let captchaAttempts = 0;
+  const tracker = new CaptchaTracker();
 
   // Shared cookie jar — PHPSESSID must carry across session, captcha, and form POST
   const cookieJar = new Map<string, string>();
 
-  // Step 1: Get session and captcha
-  const sessionResult = await fetchWithTier(
-    { url: `${BASE}/`, method: "GET", cookieJar },
-    (html) => html.length > 200,
-    forceTier
-  );
-
-  // Extract captcha image URL from session page
-  const $ = cheerio.load(sessionResult.html);
-  const captchaImgSrc = $("img[src*='captcha']").attr("src") ?? $("img#captcha_image").attr("src");
-
-  let searchResult: FetchWithTierResult | null = null;
-
-  for (let attempt = 0; attempt < 3; attempt++) {
-    captchaAttempts++;
-
-    let captchaSolution = "0000";
-    if (captchaImgSrc) {
-      const captchaUrl = captchaImgSrc.startsWith("http") ? captchaImgSrc : `${BASE}/${captchaImgSrc.replace(/^\//, "")}`;
+  const searchResult = await withCaptchaRetries<FetchWithTierResult>({
+    tracker,
+    maxAttempts: 3,
+    label: "District search",
+    attempt: async () => {
+      // Fresh session page each attempt so the captcha matches the session being submitted
+      const session = await fetchWithTier({ url: `${BASE}/`, method: "GET", cookieJar }, (html) => html.length > 200, forceTier);
+      const captchaUrl = findCaptchaUrl(session.html);
+      if (!captchaUrl) throw new Error("no captcha image found on the page (portal layout changed?)");
       const { bytes, mediaType } = await fetchImageBytes(captchaUrl, cookieJar);
-      captchaSolution = await solve(bytes.toString("base64"), "text", mediaType);
-    }
+      const captchaSolution = await solve(bytes.toString("base64"), "text", mediaType, tracker);
 
-    const formData: Record<string, string> = {
-      captcha: captchaSolution,
-    };
+      const formData: Record<string, string> = { captcha: captchaSolution };
+      if (input.searchBy === "cnr" && input.cnr) {
+        formData["cino"] = input.cnr;
+      } else if (input.searchBy === "case") {
+        formData["state_code"] = input.state ?? "";
+        formData["dist_code"] = input.district ?? "";
+        formData["court_code"] = input.complex ?? "";
+        formData["case_type"] = input.caseType ?? "";
+        formData["case_no"] = input.caseNumber ?? "";
+        formData["rgyear"] = input.year ?? "";
+      } else if (input.searchBy === "filing") {
+        formData["filing_no"] = input.filingNumber ?? "";
+        formData["rgyear"] = input.year ?? "";
+      }
 
-    if (input.searchBy === "cnr" && input.cnr) {
-      formData["cino"] = input.cnr;
-    } else if (input.searchBy === "case") {
-      formData["state_code"] = input.state ?? "";
-      formData["dist_code"] = input.district ?? "";
-      formData["court_code"] = input.complex ?? "";
-      formData["case_type"] = input.caseType ?? "";
-      formData["case_no"] = input.caseNumber ?? "";
-      formData["rgyear"] = input.year ?? "";
-    } else if (input.searchBy === "filing") {
-      formData["filing_no"] = input.filingNumber ?? "";
-      formData["rgyear"] = input.year ?? "";
-    }
-
-    try {
-      searchResult = await fetchWithTier(
+      return fetchWithTier(
         { url: `${BASE}/index.php`, method: "POST", body: formData, cookieJar },
-        (html) => html.includes("Case Details") || html.includes("cino") || html.includes("case_no"),
-        forceTier
+        // Strict: the old check also accepted any page containing "cino" or "case_no" —
+        // which is the search form itself, so a rejected captcha counted as success.
+        (html) => html.includes("Case Details"),
+        "http" // session-bound captcha: browser tiers would not carry the cookie jar
       );
-      markLastAttemptAccepted(true);
-      break;
-    } catch {
-      markLastAttemptAccepted(false);
-    }
-  }
-
-  if (!searchResult) {
-    throw new Error("District search failed: captcha not solved after 3 attempts");
-  }
+    },
+  });
 
   const caseResult = parseDistrictCase(searchResult.html, searchResult.tier);
+  // No fixture proves this flow works against the real v6 portal (multi-step AJAX with tokens).
+  caseResult.warnings = ["district connector is UNVERIFIED: request flow and selectors are guesses, no saved real response"];
 
   return {
     caseResult,
@@ -89,7 +81,8 @@ export async function districtSearch(input: SearchInput, forceTier?: Tier): Prom
     tier: searchResult.tier,
     durationMs: Date.now() - start,
     bytes: searchResult.bytes,
-    captchaAttempts,
+    captchaAttempts: tracker.total,
+    captchaSolves: tracker.accepted,
   };
 }
 

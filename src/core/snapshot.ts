@@ -20,6 +20,20 @@ export async function saveResult(runId: string, result: unknown, runsDir: string
   return filepath;
 }
 
+// Dev aid for "no parser change without a fixture": with CAPTURE_FIXTURES=1 every successful
+// search also saves the raw portal response to fixtures/captured/<portal>/<id>.html.
+// Review the file (it is real court data), then move it to fixtures/<portal>/ and write the test.
+export async function captureFixture(portal: string, id: string, html: string): Promise<void> {
+  if (process.env.CAPTURE_FIXTURES !== "1") return;
+  try {
+    const dir = path.resolve(process.env.FIXTURES_DIR ?? "./fixtures", "captured", portal.replace(/[^a-z0-9.-]/gi, "_"));
+    await fs.promises.mkdir(dir, { recursive: true });
+    await fs.promises.writeFile(path.join(dir, `${id.replace(/[^a-z0-9_-]/gi, "_")}.html`), html, "utf8");
+  } catch (err) {
+    console.log(`[fixtures] capture failed: ${(err as Error).message}`);
+  }
+}
+
 export async function savePdf(runId: string, name: string, data: Buffer, runsDir: string): Promise<string> {
   const dir = path.join(runsDir, runId, "docs");
   await fs.promises.mkdir(dir, { recursive: true });

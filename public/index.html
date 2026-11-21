@@ -204,6 +204,22 @@ body{font-family:var(--ff);font-size:14px;color:var(--fg);background:var(--bg);m
 </div>
 
 <script>
+// All API calls go through here so a key can be supplied when the server requires one (API_KEYS).
+async function apiFetch(url, opts = {}, retried = false) {
+  let key = '';
+  try { key = sessionStorage.getItem('apiKey') || ''; } catch {}
+  const headers = { ...(opts.headers || {}), ...(key ? { 'X-API-Key': key } : {}) };
+  const res = await fetch(url, { ...opts, headers });
+  if (res.status === 401 && !retried) {
+    const entered = window.prompt('This server requires an API key:');
+    if (entered) {
+      try { sessionStorage.setItem('apiKey', entered.trim()); } catch {}
+      return apiFetch(url, opts, true);
+    }
+  }
+  return res;
+}
+
 let currentSearchBy = 'cnr';
 let lastQuickResult = null;
 let cnrPrefixMap = {};
@@ -327,7 +343,7 @@ async function doSearch() {
     await runAllTiers(payload);
   } else {
     try {
-      const res = await fetch(`/api/${type}`, {
+      const res = await apiFetch(`/api/${type}`, {
         method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
       });
       const data = await res.json();
@@ -346,7 +362,7 @@ async function runAllTiers(payload) {
   const results = [];
   for (const tier of tiers) {
     try {
-      const res = await fetch('/api/quick', {
+      const res = await apiFetch('/api/quick', {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({...payload, tier})
       });
@@ -373,7 +389,7 @@ document.addEventListener('keydown', e => {
 function renderResult(data) {
   if (!data.ok) {
     return `
-      <div class="error-banner"><div class="ico">⚠</div><div class="msg"><strong>Search failed</strong><br>${esc(data.error || 'Unknown error')}</div></div>
+      <div class="error-banner"><div class="ico">⚠</div><div class="msg"><strong>Search failed</strong><br>${esc(data.error || 'Unknown error')}${(data.details || []).map(d => `<br>• ${esc(d)}`).join('')}</div></div>
       ${data.metrics ? renderMetrics(data.metrics) : ''}
     `;
   }
@@ -383,7 +399,9 @@ function renderResult(data) {
   const statusText = c.status || 'Unknown';
   const statusClass = /disposed|closed/i.test(statusText) ? 'ok' : /pending|listed|fixed/i.test(statusText) ? 'pending' : 'other';
 
+  const warn = (c.warnings || []).map(w => `<div class="error-banner" style="border-color:var(--warn);background:var(--warn-bg)"><div class="msg" style="color:var(--warn)"><strong>Unverified:</strong> ${esc(w)}</div></div>`).join('');
   return `
+    ${warn}
     <div class="result-card">
       <div class="case-header">
         <div class="case-title">
@@ -405,7 +423,8 @@ function renderResult(data) {
         <button class="tab-btn active" onclick="switchTab('${data.runId}','details',this)">Details</button>
         <button class="tab-btn" onclick="switchTab('${data.runId}','parties',this)">Parties</button>
         <button class="tab-btn" onclick="switchTab('${data.runId}','hearings',this)">Hearings (${(data.hearings||[]).length})</button>
-        <button class="tab-btn" onclick="switchTab('${data.runId}','docs',this)">Documents (${(data.documents||[]).length})</button>
+        <button class="tab-btn" onclick="switchTab('${data.runId}','docs',this)">Orders (${(c.orders||data.documents||[]).length})</button>
+        <button class="tab-btn" onclick="switchTab('${data.runId}','more',this)">More</button>
       </div>
 
       <div id="tab_${data.runId}_details" class="tab-pane active">
@@ -418,7 +437,10 @@ function renderResult(data) {
         ${renderHearings(data.hearings || [])}
       </div>
       <div id="tab_${data.runId}_docs" class="tab-pane">
-        ${renderDocuments(data.documents || [])}
+        ${renderOrders(c, data.documents || [])}
+      </div>
+      <div id="tab_${data.runId}_more" class="tab-pane">
+        ${renderMore(c)}
       </div>
     </div>
     ${renderMetrics(data.metrics)}
@@ -426,23 +448,32 @@ function renderResult(data) {
 }
 
 function renderFieldTable(c) {
+  const cls = x => x ? (x.code ? `${x.name} (${x.code})` : x.name) : '';
   const rows = [
-    ['Case type', c.caseType], ['Case number', c.caseNumber], ['Year', c.year],
-    ['CNR', c.cnr], ['Filing number', c.filingNumber], ['Filing date', c.filingDate],
-    ['Status', c.status], ['Next date', c.nextDate], ['Court', c.court],
-    ['Judge', c.judge], ['Acts', c.acts?.join(', ')], ['FIR', c.fir],
-    ['Data source', c.dataSource], ['Tier', c.tier],
+    ['CNR', c.cnr], ['Case', [c.caseType, c.caseNumber && c.year ? `${c.caseNumber}/${c.year}` : c.caseNumber].filter(Boolean).join(' ')],
+    ['Filing number', c.filingNumber], ['Filing date', c.filingDate],
+    ['Registration number', c.registrationNumber], ['Registration date', c.registrationDate],
+    ['Status', c.status], ['Stage', c.stage],
+    ['First hearing', c.firstHearingDate], ['Next hearing', c.nextHearingDate || c.nextDate],
+    ['Decision date', c.decisionDate], ['Nature of disposal', c.natureOfDisposal],
+    ['Category', cls(c.category)], ['Sub category', cls(c.subCategory)],
+    ['Court', c.court], ['State / District', [c.state, c.district].filter(Boolean).join(' / ')],
+    ['Bench type', c.benchType], ['Judicial branch', c.judicialBranch], ['Judge (coram)', c.judge],
+    ['Acts', (c.acts || []).join('; ')], ['FIR', c.fir],
+    ['Data source', c.dataSource], ['Tier', c.tier], ['Fetched at', c.fetchedAt],
   ].filter(([, v]) => v);
   if (!rows.length) return '<div class="empty-list">No fields returned.</div>';
-  return `<table class="field-table">${rows.map(([k,v]) => `<tr><td>${esc(k)}</td><td>${esc(String(v))}</td></tr>`).join('')}</table>`;
+  const extra = c.courtData?.unmappedFields
+    ? Object.entries(c.courtData.unmappedFields).map(([k, v]) => [k, v]) : [];
+  return `<table class="field-table">${rows.concat(extra).map(([k,v]) => `<tr><td>${esc(k)}</td><td>${esc(String(v))}</td></tr>`).join('')}</table>`;
 }
 
 function renderParties(c) {
-  const all = [...(c.parties || []), ...(c.advocates || [])];
-  if (!all.length) return '<div class="empty-list">No party data returned.</div>';
-  return `<ul class="party-list">${all.map(p => `
+  const parties = c.parties || [];
+  if (!parties.length) return '<div class="empty-list">No party data returned.</div>';
+  return `<ul class="party-list">${parties.map(p => `
     <li class="party-item">
-      <span class="party-role">${esc(p.role)}</span>
+      <span class="party-role">${esc(p.role)}${p.partyNo ? ' ' + p.partyNo : ''}</span>
       <span class="party-name">${esc(p.name)}</span>
       ${p.advocate ? `<span class="party-adv">Adv: ${esc(p.advocate)}</span>` : ''}
     </li>`).join('')}</ul>`;
@@ -451,18 +482,31 @@ function renderParties(c) {
 function renderHearings(hearings) {
   if (!hearings.length) return '<div class="empty-list">No hearing history returned.</div>';
   return `<div class="table-wrap"><table class="data-table">
-    <thead><tr><th>Date</th><th>Purpose</th><th>Next date</th><th>Judge</th></tr></thead>
+    <thead><tr><th>Hearing date</th><th>Business on</th><th>Purpose</th><th>Judge</th><th>List</th></tr></thead>
     <tbody>${hearings.map(h => `<tr>
-      <td>${esc(h.date || '')}</td>
+      <td>${esc(h.hearingDate || h.date || '')}</td>
+      <td>${esc(h.businessOnDate || '')}</td>
       <td>${esc(h.purpose || '')}</td>
-      <td>${esc(h.nextDate || '')}</td>
       <td>${esc(h.judge || '')}</td>
+      <td>${esc(h.causeListType || '')}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+function renderOrders(c, docs) {
+  const orders = c.orders || [];
+  if (!orders.length) return renderDocuments(docs);
+  return `<div class="table-wrap"><table class="data-table">
+    <thead><tr><th>No.</th><th>Order on</th><th>Judge</th><th>Date</th><th>File</th></tr></thead>
+    <tbody>${orders.map(o => `<tr>
+      <td>${esc(o.number)}</td><td>${esc(o.orderOn || '')}</td><td>${esc(o.judge || '')}</td><td>${esc(o.date || '')}</td>
+      <td>${o.fileUrl ? `<a class="doc-link" href="${esc(o.fileUrl)}" target="_blank" rel="noopener">Open</a>` : ''}${o.localPath ? ' <span class="doc-date">saved</span>' : ''}</td>
     </tr>`).join('')}</tbody>
   </table></div>`;
 }
 
 function renderDocuments(docs) {
-  if (!docs.length) return '<div class="empty-list">No documents returned.</div>';
+  if (!docs.length) return '<div class="empty-list">No orders or documents returned.</div>';
   return `<ul class="doc-list">${docs.map((d, i) => `
     <li class="doc-item">
       <div class="doc-icon">📄</div>
@@ -473,6 +517,37 @@ function renderDocuments(docs) {
       ${d.url ? `<a class="doc-link" href="${esc(d.url)}" target="_blank" rel="noopener">Open</a>` : ''}
       ${d.localPath ? `<span class="doc-link" style="cursor:default;opacity:.7">Saved locally</span>` : ''}
     </li>`).join('')}</ul>`;
+}
+
+function section(title, count, body) {
+  return count ? `<div class="panel-head" style="border-top:1px solid var(--border)">${esc(title)} <span style="color:var(--fg3);font-weight:400">(${count})</span></div>${body}` : '';
+}
+function simpleTable(cols, rows) {
+  return `<div class="table-wrap"><table class="data-table"><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(r => `<tr>${r.map(v => `<td>${esc(v == null ? '' : String(v))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+
+function renderMore(c) {
+  const parts = [
+    section('IA / misc applications', (c.iaApplications||[]).length, simpleTable(
+      ['Number','Classification','Party','Filed','Next date','Status'],
+      c.iaApplications.map(i => [i.number, i.classification, i.party, i.filingDate, i.nextDate, i.status]))),
+    section('Objections', (c.objections||[]).length, simpleTable(
+      ['#','Sub category','Objection','Compliance date','Receipt date'],
+      c.objections.map(o => [o.srNo, o.subCategory, o.objection, o.complianceDate, o.receiptDate]))),
+    section('Filed documents', (c.filings||[]).length, simpleTable(
+      ['Doc no.','Received','Filed by','Advocate','Document'],
+      c.filings.map(f => [f.documentNo, f.receivedDate, f.filedBy, f.advocate, f.documentFiled]))),
+    section('Lower / trial court', (c.lowerCourts||[]).length, simpleTable(
+      ['Court','Case','Decision date','State','District'],
+      c.lowerCourts.map(l => [l.courtName, l.caseNumber, l.decisionDate, l.state, l.district]))),
+    section('Linked cases', (c.linkedCases||[]).length, simpleTable(
+      ['Relation','Filing number'], c.linkedCases.map(l => [l.relation, l.filingNumber]))),
+    c.firDetails ? section('FIR', 1, simpleTable(
+      ['Police station','FIR no.','Year','District','State'],
+      [[c.firDetails.policeStation, c.firDetails.firNumber, c.firDetails.year, c.firDetails.district, c.firDetails.state]])) : '',
+  ].join('');
+  return parts || '<div class="empty-list">No additional sections for this case.</div>';
 }
 
 function renderMetrics(m) {
@@ -542,11 +617,11 @@ function esc(s) {
 // Load reference data and check server
 (async () => {
   try {
-    const r = await fetch('/api/reference/cnr-prefix-map');
+    const r = await apiFetch('/api/reference/cnr-prefix-map');
     if (r.ok) cnrPrefixMap = await r.json();
   } catch {}
   try {
-    const r = await fetch('/api/reference/sample-cnrs');
+    const r = await apiFetch('/api/reference/sample-cnrs');
     if (r.ok) { sampleCnrs = (await r.json()).courts; loadCnrList(); }
   } catch {}
 })();

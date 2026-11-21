@@ -5,3 +5,4 @@ runs/
 *.jsonl
 .DS_Store
 **/.DS_Store
+fixtures/captured/
